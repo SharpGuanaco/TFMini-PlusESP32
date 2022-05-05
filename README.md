@@ -13,7 +13,7 @@ Also, three commands names have changed in this version:
 In the example code, `printStatus()` or `printErrorStatus()` has been replaced with `printFrame()` in response to a failed `getData()` or `printReply()` if responding to `sendCommand()`.
 <hr />
 
-### Arduino Library for the Benewake TFMini-Plus Lidar sensor
+### Arduino/ESP Library for the Benewake TFMini-Plus Lidar sensor
 
 The **TFMini-S** is largely compatible with the **TFMini-Plus** and therefore able to use this library.  One difference is that the **TFMini-Plus** switches immediately upon command to change communication mode (`SET_I2C_MODE`, `SET_SERIAL_MODE`).  The **TFMini-S** requires a following `SAVE_SETTING` command.  This library is *not compatible* with the **TFMini**, which is an entirely different product with its own command and data structure.
 

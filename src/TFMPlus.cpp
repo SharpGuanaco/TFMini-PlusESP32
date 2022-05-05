@@ -1,6 +1,6 @@
 /* File Name: TFMPlus.cpp
- * Version: 1.5.0
- * Described: Arduino Library for the Benewake TFMini-Plus Lidar sensor
+ * Version: 1.5.1
+ * Described: Arduino + ESP Library for the Benewake TFMini-Plus Lidar sensor
  *            The TFMini-Plus is a unique product, and the various
  *            TFMini Libraries are not compatible with the Plus.
  * Developer: Bud Ryerson
@@ -55,6 +55,9 @@
                OBTAIN_FIRMWARE_VERSION is now GET_FIRMWARE_VERSION
                RESTORE_FACTORY_SETTINGS is now HARD_RESET
                SYSTEM_RESET is now SOFT_RESET
+ * v.1.5.1 - 05MAY22 - modified memset commands in 'TFMPlus.cpp'
+            Changed several memset calls to the reply and data buffers, enabling the library to function with ESP's.
+            Should fix the 32bit v 8bit difference between the ESP32 and Arduino
  *
  * Default settings for the TFMini-Plus are a 115200 serial baud rate
  * and a 100Hz measurement frame rate. The device will begin returning
@@ -83,7 +86,6 @@
  */
 
 #include <TFMPlus.h>
-//#include <Wire.h>          //  Future I2C Implementation
 
 // Constructor
 TFMPlus::TFMPlus(){}
@@ -120,7 +122,9 @@ bool TFMPlus::getData( int16_t &dist, int16_t &flux, int16_t &temp)
     while( (*pStream).available() > TFMP_FRAME_SIZE) (*pStream).read();
 
 	  // Zero out the entire frame data buffer.
-    memset( frame, 0, sizeof( frame));
+    for (int i = 0; i < TFMP_FRAME_SIZE; i ++){
+        frame[i] = 0;
+    }
 
     // Read one byte from the serial buffer into the last byte of
     // the frame buffer, then left shift the whole array one byte.
@@ -132,9 +136,11 @@ bool TFMPlus::getData( int16_t &dist, int16_t &flux, int16_t &temp)
         {
             // Read one byte into the framebuffer's
             // last plus one position.
-            frame[ TFMP_FRAME_SIZE] = (*pStream).read();
-            // Shift the last nine bytes one byte left.
-            memcpy( frame, frame + 1, TFMP_FRAME_SIZE);
+            frame[TFMP_FRAME_SIZE] = (*pStream).read();
+            // Shift the last nine bytes one byte left. avoid memset
+            for(int i = 1; i <= TFMP_FRAME_SIZE; i++){
+                frame[i-1] = frame[i];
+            }
         }
         // If HEADER or serial data are not available
         // after more than one second...
@@ -206,6 +212,7 @@ bool TFMPlus::sendCommand( uint32_t cmnd, uint32_t param)
     static uint8_t replyLen;            // Length of command reply data
     static uint8_t cmndData[ 8];        // 8 byte send command array
 
+    //these memsets don't need to be changed
     memset( cmndData, 0, 8);            // Clear the send command array.
     memcpy( &cmndData[ 0], &cmnd, 4);   // Copy 4 bytes of data: reply length,
                                         // command length, command number and
@@ -254,7 +261,9 @@ bool TFMPlus::sendCommand( uint32_t cmnd, uint32_t param)
     // or serial data never becomes available
     uint32_t serialTimeout = millis() + 1000;
 	  // Clear out the entire command reply data buffer
-    memset( reply, 0, sizeof( reply));
+    for (int i = 0; i < TFMP_REPLY_SIZE; i ++){
+        reply[i] = 0;
+    }
     // Read one byte from the serial buffer into the end of
     // the reply buffer and then left shift the whole array.
     // Repeat until the HEADER byte and reply length byte
@@ -267,7 +276,9 @@ bool TFMPlus::sendCommand( uint32_t cmnd, uint32_t param)
             // last-plus-one position.
             reply[ replyLen] = (*pStream).read();
             // Shift the last nine bytes one byte left.
-            memcpy( reply, reply+1, TFMP_REPLY_SIZE);
+            for(int i = 1; i <= TFMP_REPLY_SIZE; i++){
+                reply[i-1] = reply[i];
+            }
         }
         // If HEADER pattern or Serial data are not available
         // after more than one second...
